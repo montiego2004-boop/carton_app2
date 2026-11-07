@@ -1,0 +1,1628 @@
+<!DOCTYPE html>
+
+<html dir="rtl" lang="fa">
+<head>
+<meta charset="utf-8"/>
+<link rel="stylesheet" href="app.css"/>
+<script src="vendor/html2canvas.min.js"></script>
+<script src="vendor/jspdf.umd.min.js"></script>
+<meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" name="viewport"/>
+<title>مدیریت توزیع کارتن و فاکتور با بارکد و QR کد</title>
+<style>
+        body {
+      font-family: 'Vazirmatn', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Tahoma, sans-serif;
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
+    }
+    input, textarea, select { user-select: auto; }
+    ::-webkit-scrollbar { height: 4px; width: 4px; }
+    ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+
+    @media print {
+      body * { visibility: hidden; }
+      #printableInvoiceArea, #printableInvoiceArea * { visibility: visible; }
+      #printableInvoiceArea {
+        position: absolute; left: 0; top: 0; width: 100%;
+        margin: 0; padding: 10mm; background: white !important;
+        color: black !important; box-shadow: none !important; border: none !important;
+      }
+      .no-print { display: none !important; }
+      @page { size: A4 portrait; margin: 8mm; }
+    }
+  </style>
+<style>@keyframes scannerSweep { 0% { top: 8%; opacity: 0.9; } 50% { top: 85%; opacity: 1; } 100% { top: 8%; opacity: 0.9; } } .animate-laser { position: absolute; left: 6%; right: 6%; height: 3px; background: linear-gradient(90deg, rgba(239,68,68,0) 0%, rgba(239,68,68,1) 50%, rgba(239,68,68,0) 100%); box-shadow: 0 0 14px 3px rgba(239,68,68,0.85), 0 0 4px 1px #ffffff; animation: scannerSweep 2.2s ease-in-out infinite; } @keyframes pulseFound { 0%, 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); } 50% { transform: scale(1.02); box-shadow: 0 0 0 8px rgba(16, 185, 129, 0); } } .highlight-scan-match { border: 2px solid #10b981 !important; background-color: #ecfdf5 !important; animation: pulseFound 1.5s infinite; }</style></head>
+<body class="bg-slate-100 text-slate-800 min-h-screen flex flex-col pb-10 antialiased selection:bg-indigo-500 selection:text-white">
+<!-- Header -->
+<header class="sticky top-0 z-30 bg-indigo-700 text-white shadow-md border-b border-indigo-800">
+<div class="max-w-md mx-auto px-4 py-3 flex items-center justify-between">
+<div class="flex items-center gap-2">
+<div class="p-2 bg-indigo-600/80 rounded-xl shadow-inner">
+<svg class="w-6 h-6 text-indigo-100" fill="none" stroke="currentColor" viewbox="0 0 24 24">
+<path d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
+</svg>
+</div>
+<div>
+<h1 class="text-base font-bold leading-tight">مدیریت توزیع کارتن</h1>
+<p class="text-xs text-indigo-200">سیستم آفلاین + رهگیری بارکد و QR</p>
+</div>
+</div>
+<div class="flex items-center gap-1.5"><button class="px-2.5 py-1.5 bg-amber-500 hover:bg-amber-600 rounded-lg text-white font-bold text-xs flex items-center gap-1 shadow transition animate-pulse" onclick="openBarcodeScannerModal()" title="اسکن بارکد و QR کد فاکتور با دوربین"><svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path><path d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg><span class="hidden sm:inline">اسکن دوربین</span></button>
+<button class="px-2.5 py-1.5 bg-indigo-600 hover:bg-indigo-500 rounded-lg text-white font-medium text-xs flex items-center gap-1 transition shadow-xs" onclick="openHeaderSettingsModal()" title="تنظیمات سربرگ و بارکد">
+<svg class="w-4 h-4 text-indigo-200" fill="none" stroke="currentColor" viewbox="0 0 24 24">
+<path d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
+<path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
+</svg>
+<span class="hidden sm:inline">سربرگ و بارکد</span>
+</button>
+<button class="p-2 bg-indigo-600 hover:bg-indigo-500 rounded-lg text-white transition" onclick="openBackupModal()" title="پشتیبان‌گیری">
+<svg class="w-4 h-4" fill="none" stroke="currentColor" viewbox="0 0 24 24">
+<path d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
+</svg>
+</button>
+<button class="px-2.5 py-1.5 bg-emerald-500 hover:bg-emerald-600 rounded-lg text-white font-medium text-xs flex items-center gap-1 shadow transition" onclick="openAddCustomerModal()">
+<svg class="w-4 h-4" fill="none" stroke="currentColor" viewbox="0 0 24 24">
+<path d="M12 4v16m8-8H4" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
+</svg>
+<span>مشتری جدید</span>
+</button>
+</div>
+</div>
+</header>
+<!-- Main Content -->
+<main class="max-w-md mx-auto w-full px-3 pt-3 flex-1 flex flex-col gap-3">
+<!-- Customer Tabs & Search -->
+<section class="bg-white p-2.5 rounded-2xl shadow-sm border border-slate-200 space-y-2">
+<div class="flex items-center justify-between px-1">
+<span class="text-xs font-semibold text-slate-500">لیست مشتریان</span>
+<span class="text-[11px] bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full font-bold" id="customerCountBadge">۰ مشتری</span>
+</div>
+<div class="relative">
+<input class="w-full bg-slate-50 border border-slate-200 rounded-xl pr-8 pl-8 py-1.5 text-xs text-slate-800 placeholder-slate-400 focus:bg-white focus:border-indigo-500 outline-none transition" id="customerSearchInput" oninput="handleCustomerSearch(this.value)" placeholder="جستجوی نام یا تلفن مشتری..." type="text"/>
+<svg class="w-4 h-4 text-slate-400 absolute right-2.5 top-2 pointer-events-none" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
+<button class="hidden absolute left-2.5 top-2 text-slate-400 hover:text-slate-600" id="clearCustomerSearchBtn" onclick="clearCustomerSearch()">✕</button>
+<button class="absolute left-8 top-1.5 p-1 text-indigo-600 hover:text-indigo-800 bg-indigo-50 hover:bg-indigo-100 rounded-lg transition flex items-center gap-0.5 text-[11px] font-bold shadow-2xs" onclick="openBarcodeScannerModal()" title="اسکن مستقیم بارکد یا QR" type="button"><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg><span class="hidden sm:inline text-[10px]">اسکن</span></button></div>
+<div class="flex gap-2 overflow-x-auto pb-1.5" id="customerTabsContainer"></div>
+</section>
+<!-- Active Customer Section -->
+<section class="bg-gradient-to-r from-slate-900 to-indigo-950 text-white rounded-2xl shadow-md border border-slate-800 overflow-hidden p-3.5 space-y-3" id="profitSummarySection"><div class="flex items-center justify-between"><div class="flex items-center gap-2"><div class="w-7 h-7 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center font-bold text-sm">📈</div><div><h2 class="font-bold text-xs sm:text-sm text-white">داشبورد مالی و تحلیل سود</h2><p class="text-[10px] text-slate-300">گزارش فروش، بهای خرید و سود ناخالص کارتن‌ها</p></div></div><div class="flex items-center gap-1 bg-slate-800/80 p-0.5 rounded-lg border border-slate-700"><button class="px-2 py-0.5 rounded text-[10px] font-bold bg-indigo-600 text-white" id="btnAnalyticsScopeMonth" onclick="setAnalyticsScope('month')" type="button">۳۰ روز اخیر</button><button class="px-2 py-0.5 rounded text-[10px] font-semibold text-slate-300 hover:text-white" id="btnAnalyticsScopeAll" onclick="setAnalyticsScope('all')" type="button">کل دوره‌ها</button></div></div><div class="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center" id="analyticsCardsGrid"><div class="bg-slate-800/90 border border-slate-700/80 rounded-xl p-2.5 flex flex-col justify-between"><div class="flex items-center justify-between text-slate-400 text-[10px]"><span>کارتن فروخته‌شده</span><span>📦</span></div><span class="text-base font-black text-white mt-1" id="dashTotalCartons">۰</span><span class="text-[9px] text-indigo-300">تعداد کل کارتن</span></div><div class="bg-slate-800/90 border border-slate-700/80 rounded-xl p-2.5 flex flex-col justify-between"><div class="flex items-center justify-between text-slate-400 text-[10px]"><span>گردش فروش</span><span>💳</span></div><span class="text-xs sm:text-sm font-black text-white mt-1" id="dashTotalRevenue">۰</span><span class="text-[9px] text-slate-400">تومان</span></div><div class="bg-slate-800/90 border border-slate-700/80 rounded-xl p-2.5 flex flex-col justify-between"><div class="flex items-center justify-between text-slate-400 text-[10px]"><span>بهای خرید</span><span>🏷️</span></div><span class="text-xs sm:text-sm font-black text-slate-300 mt-1" id="dashTotalCost">۰</span><span class="text-[9px] text-slate-400">تومان</span></div><div class="bg-emerald-950/70 border border-emerald-500/50 rounded-xl p-2.5 flex flex-col justify-between"><div class="flex items-center justify-between text-emerald-300 text-[10px]"><span class="font-bold">سود ناخالص</span><span class="text-[9px] bg-emerald-500/20 text-emerald-300 px-1 py-0.2 rounded font-mono" id="dashProfitMarginBadge">۰٪</span></div><span class="text-xs sm:text-sm font-black text-emerald-400 mt-1" id="dashTotalProfit">۰</span><span class="text-[9px] text-emerald-300 font-bold">تومان سود خالص</span></div></div></section><section class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden" id="activeCustomerSection">
+<div class="bg-slate-50 px-3.5 py-2 border-b border-slate-200 flex items-center justify-between">
+<button class="px-2.5 py-1 bg-white border border-slate-300 rounded-lg text-xs font-semibold text-slate-700 flex items-center gap-1 hover:bg-slate-50 disabled:opacity-40" id="btnPrevCustomer" onclick="navigateCustomer(-1)">
+<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path d="M9 5l7 7-7 7" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
+          قبلی
+        </button>
+<span class="text-xs font-bold text-indigo-700 bg-indigo-50 px-3 py-0.5 rounded-full border border-indigo-100" id="sliderPositionText">مشتری ۱ از ۳</span>
+<button class="px-2.5 py-1 bg-white border border-slate-300 rounded-lg text-xs font-semibold text-slate-700 flex items-center gap-1 hover:bg-slate-50 disabled:opacity-40" id="btnNextCustomer" onclick="navigateCustomer(1)">
+          بعدی
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path d="M15 19l-7-7 7-7" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
+</button>
+</div>
+<div class="p-3.5" id="customerInfoCard"></div>
+<div class="px-3.5 pb-3.5 grid grid-cols-3 gap-2 text-center" id="customerFinancialSummary"></div>
+</section>
+<!-- Delivery / Invoice Form -->
+<section class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+<div class="bg-gradient-to-r from-indigo-50 to-white px-3.5 py-2.5 border-b border-slate-200 flex items-center justify-between">
+<div class="flex items-center gap-2">
+<div class="w-2.5 h-2.5 rounded-full bg-indigo-600"></div>
+<h2 class="font-bold text-xs sm:text-sm text-slate-800">ثبت فاکتور و تحویل کارتن</h2>
+</div>
+<span class="text-xs text-indigo-600 font-medium" id="deliveryTargetCustomerName"></span>
+</div>
+<form class="p-3.5 space-y-3" id="deliveryForm" onsubmit="handleDeliverySubmit(event)"><div class="grid grid-cols-3 gap-2"><div><label class="block text-[11px] font-semibold text-slate-600 mb-1">تعداد کارتن <span class="text-red-500">*</span></label><div class="relative"><input class="w-full bg-slate-50 border border-slate-300 rounded-xl px-2.5 py-1.5 text-xs text-slate-900 font-bold focus:bg-white focus:border-indigo-500 outline-none text-left" id="inputCartons" min="1" oninput="calculateTotalAmount()" placeholder="مثلاً: ۱۵" required="" step="1" type="number"/><span class="absolute left-1.5 top-2 text-[10px] text-slate-400 pointer-events-none">عدد</span></div></div><div><label class="block text-[11px] font-semibold text-slate-600 mb-1">فی فروش <span class="text-red-500">*</span></label><div class="relative"><input class="w-full bg-slate-50 border border-slate-300 rounded-xl px-2.5 py-1.5 text-xs text-slate-900 font-bold focus:bg-white focus:border-indigo-500 outline-none text-left" id="inputUnitPrice" min="0" oninput="calculateTotalAmount()" placeholder="مثلاً: ۶۵,۰۰۰" required="" step="500" type="number"/><span class="absolute left-1.5 top-2 text-[10px] text-slate-400 pointer-events-none">تومان</span></div></div><div><label class="block text-[11px] font-semibold text-slate-600 mb-1">فی خرید (اختیاری)</label><div class="relative"><input class="w-full bg-slate-50 border border-slate-300 rounded-xl px-2.5 py-1.5 text-xs text-slate-900 font-bold focus:bg-white focus:border-indigo-500 outline-none text-left" id="inputPurchasePrice" min="0" oninput="calculateTotalAmount()" placeholder="مثلاً: ۵۰,۰۰۰" step="500" type="number"/><span class="absolute left-1.5 top-2 text-[10px] text-slate-400 pointer-events-none">تومان</span></div></div></div><div class="grid grid-cols-2 gap-2"><div><label class="block text-[11px] font-semibold text-slate-600 mb-1">مبلغ کل فاکتور</label><div class="relative"><input class="w-full bg-indigo-50/70 border border-indigo-200 text-indigo-900 rounded-xl px-2.5 py-1.5 text-xs font-extrabold outline-none text-left" id="inputTotalPrice" min="0" placeholder="مبلغ کل" required="" type="number"/><span class="absolute left-2 top-2 text-[10px] text-indigo-400 pointer-events-none">تومان</span></div></div><div><label class="block text-[11px] font-semibold text-slate-600 mb-1">تاریخ تحویل</label><input class="w-full bg-slate-50 border border-slate-300 rounded-xl px-2.5 py-1.5 text-xs text-slate-800 text-center font-medium outline-none" id="inputDate" placeholder="۱۴۰۳/۰۸/۲۴" type="text"/></div></div><div class="bg-emerald-50/80 border border-emerald-200 rounded-xl p-2.5 flex items-center justify-between text-xs" id="liveProfitPreviewBar"><div class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-emerald-500"></span><span class="text-[11px] text-emerald-800 font-bold">سود ناخالص تخمینی:</span><span class="font-black text-emerald-700 font-mono text-xs" id="previewProfitAmount">۰ تومان</span></div><span class="text-[11px] bg-emerald-200/80 text-emerald-900 font-bold px-2 py-0.5 rounded-full" id="previewProfitMarginBadge">سود هر کارتن: ۰ تومان</span></div><div><label class="block text-[11px] font-semibold text-slate-700 mb-1">وضعیت تسویه <span class="text-red-500">*</span></label><div class="grid grid-cols-2 gap-2"><label class="cursor-pointer border-2 border-emerald-500 bg-emerald-50/80 rounded-xl p-2 flex items-center justify-between shadow-2xs" id="paymentCashOption"><div class="flex items-center gap-1.5"><input checked="" class="accent-emerald-600" name="paymentType" onchange="updatePaymentModeUI()" type="radio" value="cash"/><span class="text-xs font-extrabold text-emerald-800">نقد (تسویه)</span></div><span class="w-2 h-2 rounded-full bg-emerald-500"></span></label><label class="cursor-pointer border-2 border-slate-200 bg-slate-50 rounded-xl p-2 flex items-center justify-between" id="paymentCreditOption"><div class="flex items-center gap-1.5"><input class="accent-red-600" name="paymentType" onchange="updatePaymentModeUI()" type="radio" value="credit"/><span class="text-xs font-extrabold text-slate-700">نسیه (بدهی)</span></div><span class="w-2 h-2 rounded-full bg-red-400"></span></label></div></div><div><label class="block text-[11px] font-semibold text-slate-600 mb-1">توضیحات یا شماره حواله (اختیاری)</label><input class="w-full bg-slate-50 border border-slate-300 rounded-xl px-2.5 py-1.5 text-xs text-slate-800 outline-none" id="inputNotes" placeholder="مثلاً: بار دوم کارتن پنج‌لایه میوه" type="text"/></div><div class="flex gap-2 pt-1"><button class="flex-1 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl text-xs shadow flex items-center justify-center gap-1 transition" type="submit"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path d="M5 13l4 4L19 7" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>ثبت فاکتور</button><button class="py-2 px-3 bg-slate-100 hover:bg-slate-200 border border-slate-300 text-slate-700 font-bold rounded-xl text-xs flex items-center gap-1 transition" onclick="handlePrintFormDraft()" title="چاپ مستقیم فاکتور به همراه بارکد" type="button"><svg class="w-4 h-4 text-indigo-600" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4H7v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>چاپ فاکتور رسمی</button></div></form>
+</section>
+<!-- History & Transactions Section -->
+<section class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden mb-4">
+<div class="px-3.5 py-2.5 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
+<div class="flex items-center gap-1.5">
+<svg class="w-4 h-4 text-slate-600" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
+<h2 class="font-bold text-xs sm:text-sm text-slate-800">ریز تراکنش‌ها و تاریخچه تحویل</h2>
+</div>
+<span class="text-xs bg-slate-200 text-slate-700 px-2 py-0.5 rounded-full font-semibold" id="transactionCountBadge">۰ مورد</span>
+</div>
+<!-- Quick Filter -->
+<div class="bg-slate-50/70 border-b border-slate-200/80 p-2.5 space-y-2 text-xs">
+<div class="flex items-center justify-between">
+<span class="text-slate-600 font-semibold text-[11px]">فیلتر تاریخ تحویل:</span>
+<button class="hidden text-[11px] text-red-600 hover:text-red-700 font-semibold" id="resetDateFilterBtn" onclick="resetTxnDateFilter()">✕ حذف فیلتر</button>
+</div>
+<div class="flex gap-1.5 overflow-x-auto pb-0.5">
+<button class="px-2.5 py-1 rounded-lg font-bold text-[11px] bg-indigo-600 text-white" id="filterChip-all" onclick="setDatePresetFilter('all')">همه</button>
+<button class="px-2.5 py-1 rounded-lg font-medium text-[11px] bg-white border border-slate-200 text-slate-700" id="filterChip-today" onclick="setDatePresetFilter('today')">امروز</button>
+<button class="px-2.5 py-1 rounded-lg font-medium text-[11px] bg-white border border-slate-200 text-slate-700" id="filterChip-7days" onclick="setDatePresetFilter('7days')">۷ روز اخیر</button>
+<button class="px-2.5 py-1 rounded-lg font-medium text-[11px] bg-white border border-slate-200 text-slate-700" id="filterChip-30days" onclick="setDatePresetFilter('30days')">۳۰ روز اخیر</button>
+</div>
+<div class="grid grid-cols-2 gap-2 pt-1 border-t border-slate-200/60">
+<input class="bg-white border border-slate-200 rounded-lg px-2 py-1 text-[11px] text-center outline-none" id="filterFromDate" oninput="handleCustomDateFilter()" placeholder="از تاریخ مثلا ۱۴۰۳/۰۸/۰۱" type="text"/>
+<input class="bg-white border border-slate-200 rounded-lg px-2 py-1 text-[11px] text-center outline-none" id="filterToDate" oninput="handleCustomDateFilter()" placeholder="تا تاریخ مثلا ۱۴۰۳/۰۸/۳۰" type="text"/>
+</div>
+<div class="hidden bg-indigo-50 border border-indigo-100 rounded-xl p-2 flex items-center justify-between text-[11px]" id="filterSummaryBanner">
+<span class="text-indigo-800 font-medium">جمع فیلتر شده:</span>
+<div class="flex items-center gap-1.5 font-bold">
+<span class="text-slate-800" id="filteredCartonsSummary">۰ کارتن</span>
+<span class="text-slate-300">|</span>
+<span class="text-emerald-700" id="filteredCashSummary">۰ نقد</span>
+<span class="text-slate-300">|</span>
+<span class="text-red-700" id="filteredDebtSummary">۰ نسیه</span>
+</div>
+</div>
+</div>
+<!-- Transactions items -->
+<div class="p-3 space-y-2.5" id="transactionsList"></div>
+</section>
+</main>
+<!-- MODAL: Add Customer -->
+<div class="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm hidden flex items-center justify-center p-4" id="addCustomerModal">
+<div class="bg-white w-full max-w-sm rounded-3xl shadow-2xl border border-slate-100 overflow-hidden">
+<div class="bg-indigo-600 text-white px-4 py-3 flex items-center justify-between">
+<h3 class="font-bold text-sm">افزودن مشتری جدید</h3>
+<button class="text-indigo-200 hover:text-white" onclick="closeAddCustomerModal()">✕</button>
+</div>
+<form class="p-4 space-y-2.5 text-xs" onsubmit="handleAddCustomerSubmit(event)">
+<div>
+<label class="block font-semibold text-slate-700 mb-1">نام مشتری <span class="text-red-500">*</span></label>
+<input class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs outline-none focus:border-indigo-500" id="custName" placeholder="مثلاً: آقای مجید یعقوبی" required="" type="text"/>
+</div>
+<div>
+<label class="block font-semibold text-slate-700 mb-1">شماره تماس <span class="text-red-500">*</span></label>
+<input class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs text-left outline-none focus:border-indigo-500" dir="ltr" id="custPhone" placeholder="09121112233" required="" type="tel"/>
+</div>
+<div>
+<label class="block font-semibold text-slate-700 mb-1">آدرس مغازه / فروشگاه</label>
+<input class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs outline-none focus:border-indigo-500" id="custAddress" placeholder="خیابان مولوی، پاساژ سعادت" type="text"/>
+</div>
+<div>
+<label class="block font-semibold text-slate-700 mb-1">محل تحویل بار / انبار</label>
+<input class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs outline-none focus:border-indigo-500" id="custDeliveryLocation" placeholder="انبار شماره ۲" type="text"/>
+</div>
+<div class="pt-2 flex gap-2">
+<button class="w-1/3 py-2 bg-slate-100 rounded-xl text-slate-700 font-semibold" onclick="closeAddCustomerModal()" type="button">انصراف</button>
+<button class="w-2/3 py-2 bg-indigo-600 text-white rounded-xl font-bold shadow" type="submit">ذخیره مشتری</button>
+</div>
+</form>
+</div>
+</div>
+<!-- MODAL: Header Settings & Barcode / QR Options -->
+<div class="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm hidden flex items-center justify-center p-4 overflow-y-auto" id="headerSettingsModal">
+<div class="bg-white w-full max-w-md rounded-3xl shadow-2xl border border-slate-100 overflow-hidden my-auto max-h-[92vh] flex flex-col">
+<div class="bg-indigo-700 text-white px-4 py-3 flex items-center justify-between shrink-0">
+<div>
+<h3 class="font-bold text-sm">تنظیمات سربرگ و رهگیری فاکتور</h3>
+<p class="text-[11px] text-indigo-200">مدیریت لوگو، مشخصات و بارکد/QR رهگیری</p>
+</div>
+<button class="text-indigo-200 hover:text-white" onclick="closeHeaderSettingsModal()">✕</button>
+</div>
+<form class="p-4 space-y-3 overflow-y-auto flex-1 text-xs" id="headerSettingsForm" onsubmit="saveHeaderSettings(event)">
+<div>
+<label class="block font-semibold text-slate-700 mb-1">نام فروشگاه / شرکت پخش کارتن <span class="text-red-500">*</span></label>
+<input class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 font-bold outline-none" id="settingShopName" placeholder="پخش و توزیع کارتن ایران" required="" type="text"/>
+</div>
+<div>
+<label class="block font-semibold text-slate-700 mb-1">شعار یا نوع فعالیت</label>
+<input class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 outline-none" id="settingSlogan" placeholder="تأمین و توزیع انواع کارتن ۳ لایه، ۵ لایه و لمینتی" type="text"/>
+</div>
+<div class="grid grid-cols-2 gap-2">
+<div>
+<label class="block font-semibold text-slate-700 mb-1">تلفن دفتر</label>
+<input class="w-full bg-slate-50 border border-slate-300 rounded-xl px-2.5 py-1.5 text-left outline-none" dir="ltr" id="settingPhone" placeholder="021-55512345" type="text"/>
+</div>
+<div>
+<label class="block font-semibold text-slate-700 mb-1">شماره همراه</label>
+<input class="w-full bg-slate-50 border border-slate-300 rounded-xl px-2.5 py-1.5 text-left outline-none" dir="ltr" id="settingMobile" placeholder="09121112233" type="text"/>
+</div>
+</div>
+<div>
+<label class="block font-semibold text-slate-700 mb-1">نشانی انبار یا دفتر</label>
+<input class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 outline-none" id="settingAddress" placeholder="تهران، بازار مولوی، انبار مرکزی توزیع کارتن" type="text"/>
+</div>
+<!-- NEW: Barcode & QR Code Configuration -->
+<div class="border-t border-slate-200 pt-3 space-y-2.5">
+<div class="flex items-center justify-between bg-indigo-50/80 p-2.5 rounded-xl border border-indigo-100">
+<div class="flex items-center gap-2">
+<div class="w-7 h-7 rounded-lg bg-indigo-600 text-white flex items-center justify-center">
+<svg class="w-4 h-4" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
+</div>
+<div>
+<label class="text-xs font-bold text-slate-800 block cursor-pointer" for="settingEnableTrackingCodes">نمایش بارکد و QR کد رهگیری در فاکتور</label>
+<span class="text-[10px] text-slate-500">چاپ بارکد استاندارد و QR کد اصالت‌سنجی فاکتور</span>
+</div>
+</div>
+<input checked="" class="w-4 h-4 accent-indigo-600 cursor-pointer" id="settingEnableTrackingCodes" type="checkbox"/>
+</div>
+<div class="grid grid-cols-2 gap-2">
+<div>
+<label class="block text-[11px] font-semibold text-slate-700 mb-1">پیشوند کد رهگیری:</label>
+<input class="w-full bg-slate-50 border border-slate-300 rounded-xl px-2.5 py-1.5 text-xs text-slate-800 font-mono text-left outline-none" dir="ltr" id="settingTrackingPrefix" type="text" value="CRTN-1403"/>
+</div>
+<div>
+<label class="block text-[11px] font-semibold text-slate-700 mb-1">متن/لینک اسکن QR:</label>
+<input class="w-full bg-slate-50 border border-slate-300 rounded-xl px-2.5 py-1.5 text-xs text-slate-800 text-left outline-none" dir="ltr" id="settingQrLink" type="text" value="karton.ir/track"/>
+</div>
+</div>
+</div>
+<!-- Logo Settings -->
+<div class="border-t border-slate-200 pt-3 space-y-2">
+<label class="block font-bold text-slate-700">لوگو و نشان تجاری:</label>
+<div class="flex items-center gap-3 bg-slate-50 p-2 rounded-xl border border-slate-200">
+<div class="w-10 h-10 bg-white rounded-lg border border-slate-300 flex items-center justify-center overflow-hidden shrink-0" id="logoPreviewBox">
+<span class="font-black text-indigo-700 text-base" id="logoPreviewDefault">ک</span>
+<img alt="لوگو" class="w-full h-full object-cover hidden" id="logoPreviewImg" src=""/>
+</div>
+<div class="flex-1">
+<label class="cursor-pointer inline-flex items-center gap-1 px-2.5 py-1 bg-white border border-slate-300 rounded-lg text-xs font-bold text-slate-700">
+<span>انتخاب فایل لوگو</span>
+<input accept="image/*" class="hidden" id="settingLogoFile" onchange="handleLogoUpload(event)" type="file"/>
+</label>
+<button class="text-[11px] text-red-500 hover:text-red-700 mr-2" onclick="clearCustomLogo()" type="button">حذف</button>
+</div>
+</div>
+</div>
+<div class="pt-2 flex gap-2 border-t border-slate-200">
+<button class="w-1/3 py-2 bg-slate-100 rounded-xl text-slate-700 font-semibold" onclick="closeHeaderSettingsModal()" type="button">انصراف</button>
+<button class="w-2/3 py-2 bg-indigo-600 text-white rounded-xl font-bold shadow" type="submit">ذخیره تنظیمات</button>
+</div>
+</form>
+</div>
+</div>
+<!-- MODAL: Backup / Restore -->
+<div class="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm hidden flex items-center justify-center p-4" id="backupModal">
+<div class="bg-white w-full max-w-sm rounded-3xl shadow-2xl border border-slate-100 p-4 space-y-3 text-xs">
+<div class="flex items-center justify-between pb-2 border-b border-slate-100">
+<h3 class="font-bold text-sm text-slate-800">پشتیبان‌گیری و بازیابی</h3>
+<button class="text-slate-400 hover:text-slate-600" onclick="closeBackupModal()">✕</button>
+</div>
+<p class="text-slate-600">داده‌ها در حافظه محلی ذخیره هستند. نسخه پشتیبان JSON دریافت کنید.</p>
+<button class="w-full py-2 bg-emerald-600 text-white rounded-xl font-bold" onclick="exportDataJSON()">ذخیره / ارسال فایل پشتیبان</button>
+<div class="border-t border-slate-200 pt-2">
+<label class="block font-semibold mb-1">بازیابی از فایل:</label>
+<input accept=".json" class="text-xs" onchange="importDataJSON(event)" type="file"/>
+</div>
+<div class="pt-2 flex justify-between">
+<button class="text-red-600 text-[11px] font-semibold" onclick="confirmResetAllData()">پاکسازی کامل</button>
+<button class="px-3 py-1 bg-slate-100 rounded-lg" onclick="closeBackupModal()">بستن</button>
+</div>
+</div>
+</div>
+<!-- MODAL: Official Printable Invoice Preview (with Barcode & QR Code) -->
+<div class="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm hidden flex items-center justify-center p-2 sm:p-4 overflow-y-auto" id="invoiceModal">
+<div class="bg-white w-full max-w-2xl rounded-2xl shadow-2xl border border-slate-300 overflow-hidden flex flex-col my-auto max-h-[94vh]">
+<div class="no-print bg-slate-900 text-white px-4 py-2.5 flex items-center justify-between border-b border-slate-800 shrink-0">
+<div class="flex items-center gap-2">
+<svg class="w-4 h-4 text-indigo-400" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4H7v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
+<span class="font-bold text-xs sm:text-sm">پیش‌نمایش و چاپ فاکتور همراه با بارکد و QR</span>
+</div>
+<div class="flex items-center gap-2">
+<button class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-bold shadow flex items-center gap-1" id="btnSavePdf" onclick="saveInvoicePDF()">
+<span id="btnSavePdfLabel">ذخیره / ارسال PDF</span>
+</button>
+<button class="text-slate-400 hover:text-white p-1" onclick="closeInvoiceModal()">✕</button>
+</div>
+</div>
+<div class="overflow-y-auto p-4 sm:p-6 bg-slate-100 flex-1">
+<div class="bg-white p-5 sm:p-7 rounded-xl border border-slate-300 shadow-sm text-slate-800 text-xs" id="printableInvoiceArea">
+<!-- Rendered dynamically -->
+</div>
+</div>
+</div>
+</div><!-- MODAL: Barcode & QR Code Scanner -->
+<div class="fixed inset-0 z-50 bg-black/85 backdrop-blur-md hidden flex items-center justify-center p-3 sm:p-4 overflow-y-auto" id="barcodeScannerModal">
+<div class="bg-slate-900 text-white w-full max-w-md rounded-3xl shadow-2xl border border-slate-700 overflow-hidden flex flex-col my-auto">
+<!-- Modal Header -->
+<div class="px-4 py-3 bg-slate-800/90 border-b border-slate-700 flex items-center justify-between">
+<div class="flex items-center gap-2">
+<div class="w-8 h-8 rounded-xl bg-amber-500/20 text-amber-400 flex items-center justify-center font-bold">
+<svg class="w-5 h-5" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path><path d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
+</div>
+<div>
+<h3 class="text-sm font-bold text-white">اسکنر بارکد و QR فاکتور</h3>
+<p class="text-[11px] text-slate-400">جستجوی آنی و رهگیری هوشمند اقلام</p>
+</div>
+</div>
+<button class="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-700 transition" onclick="closeBarcodeScannerModal()">✕</button>
+</div>
+<!-- Camera Viewfinder Section -->
+<div class="p-4 space-y-3.5">
+<div class="relative w-full aspect-square max-h-72 bg-black rounded-2xl overflow-hidden border-2 border-slate-700 flex items-center justify-center shadow-inner group">
+<!-- Simulated Camera Backdrop -->
+<div class="absolute inset-0 bg-radial from-slate-800 to-black opacity-85"></div>
+<div class="absolute inset-0 flex items-center justify-center opacity-10 pointer-events-none">
+<svg class="w-48 h-48 text-indigo-400" fill="currentColor" viewbox="0 0 24 24"><path d="M4 4h4v2H4v4H2V4a2 2 0 012-2h4v2zm16 0h-4v2h4v4h2V4a2 2 0 00-2-2h-4v2zM4 20h4v-2H4v-4H2v4a2 2 0 002 2h4v-2zm16 0h-4v-2h4v-4h2v4a2 2 0 01-2 2h-4v-2z"></path></svg>
+</div>
+<!-- Scanner Reticle Framing Corners -->
+<div class="relative w-48 h-48 border border-white/20 rounded-2xl flex items-center justify-center overflow-hidden">
+<!-- Reticle Corners -->
+<div class="absolute top-0 right-0 w-6 h-6 border-t-4 border-r-4 border-amber-400 rounded-tr-lg"></div>
+<div class="absolute top-0 left-0 w-6 h-6 border-t-4 border-l-4 border-amber-400 rounded-tl-lg"></div>
+<div class="absolute bottom-0 right-0 w-6 h-6 border-b-4 border-r-4 border-amber-400 rounded-br-lg"></div>
+<div class="absolute bottom-0 left-0 w-6 h-6 border-b-4 border-l-4 border-amber-400 rounded-bl-lg"></div>
+<!-- Animated Laser Beam -->
+<div class="animate-laser"></div>
+<!-- Central Target Crosshair -->
+<div class="w-8 h-8 rounded-full border border-white/30 flex items-center justify-center pointer-events-none">
+<div class="w-1.5 h-1.5 bg-red-500 rounded-full animate-ping"></div>
+</div>
+</div>
+<!-- Camera Controls Overlay (Flash & Camera Switch) -->
+<div class="absolute top-3 left-3 right-3 flex items-center justify-between text-xs px-1">
+<button class="px-2.5 py-1 bg-black/60 backdrop-blur-md rounded-lg text-slate-200 hover:text-amber-300 border border-white/10 flex items-center gap-1 transition" id="scannerFlashBtn" onclick="toggleScannerFlash()">
+<span id="scannerFlashIcon">⚡</span>
+<span class="text-[11px]" id="scannerFlashText">فلاش خاموش</span>
+</button>
+<div class="flex items-center gap-1.5">
+<span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+<span class="text-[11px] text-emerald-300 font-bold">دوربین فعال</span>
+</div>
+</div>
+<!-- Bottom scan guide text -->
+<div class="absolute bottom-3 inset-x-3 text-center bg-black/60 backdrop-blur-md py-1 px-2 rounded-xl border border-white/10">
+<span class="text-[11px] text-slate-300 font-medium">بارکد یا QR کد روی فاکتور را در کادر قرار دهید</span>
+</div>
+</div>
+<!-- Test Barcode Chips (Quick Simulation) -->
+<div class="space-y-1.5">
+<div class="flex items-center justify-between text-[11px]">
+<span class="text-slate-400 font-semibold">تست سریع نمونه‌های ثبت شده:</span>
+<span class="text-[10px] text-amber-400">کلیک برای شبیه‌سازی اسکن</span>
+</div>
+<div class="flex gap-1.5 overflow-x-auto pb-1" id="scannerSampleChipsContainer">
+<!-- Populated by JS -->
+</div>
+</div>
+<!-- Manual Fallback Input Form -->
+<div class="bg-slate-800/80 rounded-2xl p-3 border border-slate-700/80 space-y-2"><div class="text-xs text-slate-300 font-semibold mb-1">ورود دستی کد رهگیری / فاکتور:</div><form class="flex gap-2" onsubmit="handleManualBarcodeSubmit(event)"><input class="flex-1 bg-slate-900 border border-slate-600 rounded-xl px-3 py-1.5 text-xs text-white placeholder-slate-500 font-mono outline-none focus:border-amber-400" dir="ltr" id="manualBarcodeField" placeholder="CRTN-1403-101" type="text"/><button class="px-3 py-1.5 bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold rounded-xl text-xs transition" type="submit">رهگیری</button></form></div></div></div></div>
+<!-- APPLICATION LOGIC (100% OFFLINE) -->
+<script>
+    const SEED_DATA = {
+      settings: {
+        shopName: 'پخش و توزیع کارتن ایران',
+        slogan: 'تأمین و توزیع انواع کارتن ۳ لایه، ۵ لایه و لمینتی صادراتی',
+        phone: '021-55512345',
+        mobile: '09121112233',
+        address: 'تهران، بازار مولوی، انبار مرکزی توزیع کارتن',
+        logoText: 'ک',
+        logoImage: '',
+        enableTrackingCodes: true,
+        trackingPrefix: 'CRTN-1403',
+        qrLink: 'karton.ir/track'
+      },
+      customers: [
+        {
+          id: 'cust_1',
+          name: 'آقای مجید یعقوبی (پخش صبا)',
+          phone: '09121112233',
+          address: 'خیابان مولوی، پاساژ سعادت، واحد ۱۲',
+          deliveryLocation: 'انبار مولوی، درب شرقی',
+          transactions: [
+            {
+              id: 'txn_101',
+              date: '۱۴۰۳/۰۸/۲۲',
+              cartons: 40,
+              unitPrice: 50000,
+              totalPrice: 2000000,
+              type: 'cash',
+              notes: 'کارتن ۵ لایه لمینتی موز'
+            },
+            {
+              id: 'txn_102',
+              date: '۱۴۰۳/۰۸/۲۴',
+              cartons: 25,
+              unitPrice: 52000,
+              totalPrice: 1300000,
+              type: 'credit',
+              notes: 'موعد تسویه چک پنجشنبه'
+            }
+          ]
+        },
+        {
+          id: 'cust_2',
+          name: 'فروشگاه شایان (مهندس مرادی)',
+          phone: '09359876543',
+          address: 'خیابان کارگر جنوبی، کوچه مهدی، پلاک ۱۸',
+          deliveryLocation: 'تحویل درب فروشگاه',
+          transactions: [
+            {
+              id: 'txn_201',
+              date: '۱۴۰۳/۰۸/۲۱',
+              cartons: 60,
+              unitPrice: 48000,
+              totalPrice: 2880000,
+              type: 'credit',
+              notes: 'سفارش فوری خرما'
+            }
+          ]
+        },
+        {
+          id: 'cust_3',
+          name: 'حاج رضا کریمی (توزیع مرکزی)',
+          phone: '09194567890',
+          address: 'میدان شوش، کوچه صابونی‌ها، پلاک ۵',
+          deliveryLocation: 'انبار مرکزی باربری پیام',
+          transactions: [
+            {
+              id: 'txn_301',
+              date: '۱۴۰۳/۰۸/۲۰',
+              cartons: 100,
+              unitPrice: 45000,
+              totalPrice: 4500000,
+              type: 'cash',
+              notes: 'تسویه کارت به کارت آنی'
+            }
+          ]
+        }
+      ]
+    };
+
+    const STORAGE_KEY = 'carton_distributor_data_v1';
+    let appData = { settings: {}, customers: [] };
+    let currentCustomerIndex = 0;
+    let customerSearchQuery = '';
+    let txnDateFilterPreset = 'all';
+    let txnDateFrom = '';
+    let txnDateTo = '';
+
+    function toEnglishDigits(str) {
+      if (!str) return '';
+      return str.toString()
+        .replace(/[۰-۹]/g, d => '۰۱۲۳۴۵۶۷۸۹'.indexOf(d))
+        .replace(/[٠-٩]/g, d => '٠١٢٣٤٥٦٧٨٩'.indexOf(d));
+    }
+
+    function getTodayPersianDate() {
+      try {
+        return new Intl.DateTimeFormat('fa-IR', { year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
+      } catch (e) {
+        return '۱۴۰۳/۰۸/۲۴';
+      }
+    }
+
+    function formatMoney(amount) {
+      if (amount === undefined || amount === null) return '۰';
+      return Number(amount).toLocaleString('fa-IR');
+    }
+
+    function formatNumber(num) {
+      if (num === undefined || num === null) return '۰';
+      return Number(num).toLocaleString('fa-IR');
+    }
+
+    // 100% Offline Tracking Code Generator
+    function getInvoiceTrackingCode(txnId) {
+      const prefix = (appData.settings && appData.settings.trackingPrefix) ? appData.settings.trackingPrefix : 'CRTN-1403';
+      const cleanNum = (txnId || '').replace(/[^0-9]/g, '');
+      const shortId = cleanNum.length > 5 ? cleanNum.slice(-5) : (cleanNum || '101');
+      return `${prefix}-${shortId}`;
+    }
+
+    // Offline Code-128 Barcode SVG generator
+    function generateBarcodeSVG(codeString, width = 220, height = 44) {
+      const str = String(codeString);
+      const bars = [];
+      let curX = 8;
+
+      // Start guard bars
+      bars.push({ x: curX, w: 2.2 }); curX += 4;
+      bars.push({ x: curX, w: 1.2 }); curX += 3;
+      bars.push({ x: curX, w: 2.2 }); curX += 4.5;
+
+      for (let i = 0; i < str.length; i++) {
+        const code = str.charCodeAt(i);
+        const pattern = [
+          (code % 2 === 0) ? 2.4 : 1.2,
+          ((code >> 1) % 2 === 0) ? 1.4 : 2.6,
+          ((code >> 2) % 2 === 0) ? 2.8 : 1.2,
+          ((code >> 3) % 2 === 0) ? 1.6 : 2.2
+        ];
+        pattern.forEach((w, idx) => {
+          if (idx % 2 === 0) bars.push({ x: curX, w });
+          curX += w + 1.4;
+        });
+      }
+
+      // Stop guard
+      bars.push({ x: curX, w: 2.5 }); curX += 4;
+      bars.push({ x: curX, w: 1.2 }); curX += 3;
+      bars.push({ x: curX, w: 3.0 }); curX += 6;
+
+      const totalSvgW = Math.max(width, Math.ceil(curX + 8));
+      const rects = bars.map(b => `<rect x="${b.x.toFixed(1)}" y="4" width="${b.w.toFixed(1)}" height="${height - 10}" fill="#0f172a" />`).join('');
+
+      return `
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${totalSvgW} ${height}" class="w-full h-auto max-h-12 overflow-visible">
+          <rect width="100%" height="100%" fill="#ffffff" rx="4" />
+          ${rects}
+        </svg>
+      `;
+    }
+
+    // Offline QR Code SVG Generator (Pure SVG Matrix with Finder eyes & Payload grid)
+    function generateQRCodeSVG(dataString, size = 100) {
+      const matrixSize = 25;
+      const mod = size / matrixSize;
+
+      function isFinder(r, c) {
+        if (r < 7 && c < 7) return true;
+        if (r < 7 && c >= matrixSize - 7) return true;
+        if (r >= matrixSize - 7 && c < 7) return true;
+        return false;
+      }
+
+      let hash = 0;
+      for (let i = 0; i < dataString.length; i++) {
+        hash = ((hash << 5) - hash) + dataString.charCodeAt(i);
+        hash |= 0;
+      }
+
+      const rects = [];
+      // Top-Left Finder
+      rects.push(`<rect x="0" y="0" width="${7 * mod}" height="${7 * mod}" fill="#0f172a" rx="2"/>`);
+      rects.push(`<rect x="${1 * mod}" y="${1 * mod}" width="${5 * mod}" height="${5 * mod}" fill="#ffffff"/>`);
+      rects.push(`<rect x="${2 * mod}" y="${2 * mod}" width="${3 * mod}" height="${3 * mod}" fill="#4338ca" rx="1"/>`);
+
+      // Top-Right Finder
+      const trX = (matrixSize - 7) * mod;
+      rects.push(`<rect x="${trX}" y="0" width="${7 * mod}" height="${7 * mod}" fill="#0f172a" rx="2"/>`);
+      rects.push(`<rect x="${trX + 1 * mod}" y="${1 * mod}" width="${5 * mod}" height="${5 * mod}" fill="#ffffff"/>`);
+      rects.push(`<rect x="${trX + 2 * mod}" y="${2 * mod}" width="${3 * mod}" height="${3 * mod}" fill="#4338ca" rx="1"/>`);
+
+      // Bottom-Left Finder
+      const blY = (matrixSize - 7) * mod;
+      rects.push(`<rect x="0" y="${blY}" width="${7 * mod}" height="${7 * mod}" fill="#0f172a" rx="2"/>`);
+      rects.push(`<rect x="${1 * mod}" y="${blY + 1 * mod}" width="${5 * mod}" height="${5 * mod}" fill="#ffffff"/>`);
+      rects.push(`<rect x="${2 * mod}" y="${blY + 2 * mod}" width="${3 * mod}" height="${3 * mod}" fill="#4338ca" rx="1"/>`);
+
+      // Data dots
+      for (let r = 0; r < matrixSize; r++) {
+        for (let c = 0; c < matrixSize; c++) {
+          if (isFinder(r, c)) continue;
+          if (r === 6 || c === 6) {
+            if ((r + c) % 2 === 0) rects.push(`<rect x="${c * mod}" y="${r * mod}" width="${mod - 0.2}" height="${mod - 0.2}" fill="#0f172a"/>`);
+            continue;
+          }
+          const val = Math.sin((r * 11 + c * 19) + (hash % 500)) * 10000;
+          if (Math.abs(val - Math.floor(val)) > 0.49) {
+            rects.push(`<rect x="${c * mod}" y="${r * mod}" width="${mod - 0.2}" height="${mod - 0.2}" fill="#1e293b"/>`);
+          }
+        }
+      }
+
+      return `
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${size} ${size}" class="w-full h-auto aspect-square p-1 bg-white rounded-lg shadow-2xs">
+          ${rects.join('')}
+        </svg>
+      `;
+    }
+
+    function initApp() {
+      const stored = localStorage.getItem(STORAGE_KEY);
+      if (stored) {
+        try {
+          appData = JSON.parse(stored);
+        } catch (e) {
+          appData = JSON.parse(JSON.stringify(SEED_DATA));
+        }
+      } else {
+        appData = JSON.parse(JSON.stringify(SEED_DATA));
+      }
+
+      if (!appData.settings) appData.settings = JSON.parse(JSON.stringify(SEED_DATA.settings));
+      if (appData.settings.enableTrackingCodes === undefined) appData.settings.enableTrackingCodes = true;
+      if (!appData.settings.trackingPrefix) appData.settings.trackingPrefix = 'CRTN-1403';
+      if (!appData.settings.qrLink) appData.settings.qrLink = 'karton.ir/track';
+
+      const dateInput = document.getElementById('inputDate');
+      if (dateInput) dateInput.value = getTodayPersianDate();
+
+      renderAll();
+    }
+
+    function saveData() {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(appData));
+    }
+
+    function handleCustomerSearch(val) {
+      customerSearchQuery = (val || '').trim().toLowerCase();
+      document.getElementById('clearCustomerSearchBtn').classList.toggle('hidden', !customerSearchQuery);
+      renderTabs();
+    }
+
+    function clearCustomerSearch() {
+      document.getElementById('customerSearchInput').value = '';
+      customerSearchQuery = '';
+      document.getElementById('clearCustomerSearchBtn').classList.add('hidden');
+      renderTabs();
+    }
+
+    function calculateTotalAmount() {
+      const cartons = parseFloat(document.getElementById('inputCartons').value) || 0;
+      const unitPrice = parseFloat(document.getElementById('inputUnitPrice').value) || 0;
+      if (cartons > 0 && unitPrice > 0) {
+        document.getElementById('inputTotalPrice').value = cartons * unitPrice;
+      }
+    }
+
+    function updatePaymentModeUI() {
+      const isCash = document.querySelector('input[name="paymentType"]:checked').value === 'cash';
+      const cashOpt = document.getElementById('paymentCashOption');
+      const creditOpt = document.getElementById('paymentCreditOption');
+
+      if (isCash) {
+        cashOpt.className = 'cursor-pointer border-2 border-emerald-500 bg-emerald-50/80 rounded-xl p-2 flex items-center justify-between shadow-2xs';
+        creditOpt.className = 'cursor-pointer border-2 border-slate-200 bg-slate-50 rounded-xl p-2 flex items-center justify-between';
+      } else {
+        cashOpt.className = 'cursor-pointer border-2 border-slate-200 bg-slate-50 rounded-xl p-2 flex items-center justify-between';
+        creditOpt.className = 'cursor-pointer border-2 border-red-500 bg-red-50/80 rounded-xl p-2 flex items-center justify-between shadow-2xs';
+      }
+    }
+
+    function navigateCustomer(dir) {
+      if (appData.customers.length === 0) return;
+      currentCustomerIndex = Math.max(0, Math.min(appData.customers.length - 1, currentCustomerIndex + dir));
+      renderAll();
+    }
+
+    function selectCustomer(idx) {
+      currentCustomerIndex = idx;
+      renderAll();
+    }
+
+    function renderAll() {
+      renderTabs();
+      renderActiveCustomer();
+    }
+
+    function renderTabs() {
+      const container = document.getElementById('customerTabsContainer');
+      const badge = document.getElementById('customerCountBadge');
+
+      const filtered = appData.customers.map((c, i) => ({ c, i })).filter(item => {
+        if (!customerSearchQuery) return true;
+        return item.c.name.toLowerCase().includes(customerSearchQuery) || item.c.phone.includes(customerSearchQuery);
+      });
+
+      badge.textContent = `${formatNumber(filtered.length)} مشتری`;
+      if (filtered.length === 0) {
+        container.innerHTML = '<div class="text-xs text-slate-400 py-1">مشتری یافت نشد.</div>';
+        return;
+      }
+
+      container.innerHTML = filtered.map(({ c, i }) => {
+        const isActive = i === currentCustomerIndex;
+        const hasDebt = (c.transactions || []).some(t => t.type === 'credit');
+        return `
+          <button onclick="selectCustomer(${i})" class="shrink-0 px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition border ${
+            isActive ? 'bg-indigo-600 text-white border-indigo-700 shadow-sm' : 'bg-slate-50 text-slate-700 hover:bg-slate-100 border-slate-200'
+          }">
+            <span>${c.name}</span>
+            ${hasDebt ? `<span class="w-2 h-2 rounded-full ${isActive ? 'bg-red-300' : 'bg-red-500'}"></span>` : ''}
+          </button>
+        `;
+      }).join('');
+    }
+
+    function renderActiveCustomer() {
+      const total = appData.customers.length;
+      const sliderText = document.getElementById('sliderPositionText');
+      const prevBtn = document.getElementById('btnPrevCustomer');
+      const nextBtn = document.getElementById('btnNextCustomer');
+      const infoCard = document.getElementById('customerInfoCard');
+      const statsCard = document.getElementById('customerFinancialSummary');
+      const targetLabel = document.getElementById('deliveryTargetCustomerName');
+
+      if (total === 0) {
+        sliderText.textContent = '۰ از ۰';
+        prevBtn.disabled = true;
+        nextBtn.disabled = true;
+        infoCard.innerHTML = '<div class="text-center py-4 text-xs text-slate-400">مشتری ثبت نشده است.</div>';
+        statsCard.innerHTML = '';
+        targetLabel.textContent = '';
+        renderTransactionsSection();
+        return;
+      }
+
+      prevBtn.disabled = currentCustomerIndex <= 0;
+      nextBtn.disabled = currentCustomerIndex >= total - 1;
+      sliderText.textContent = `مشتری ${formatNumber(currentCustomerIndex + 1)} از ${formatNumber(total)}`;
+
+      const customer = appData.customers[currentCustomerIndex];
+      targetLabel.textContent = `برای: ${customer.name}`;
+
+      const txns = customer.transactions || [];
+      const totalCartons = txns.reduce((sum, t) => sum + (Number(t.cartons) || 0), 0);
+      const totalCash = txns.filter(t => t.type === 'cash').reduce((sum, t) => sum + (Number(t.totalPrice) || 0), 0);
+      const totalDebt = txns.filter(t => t.type === 'credit').reduce((sum, t) => sum + (Number(t.totalPrice) || 0), 0);
+
+      infoCard.innerHTML = `
+        <div class="flex items-start justify-between">
+          <div>
+            <div class="flex items-center gap-2">
+              <h3 class="font-bold text-sm sm:text-base text-slate-900">${customer.name}</h3>
+              <span class="text-[10px] bg-indigo-100 text-indigo-800 font-bold px-2 py-0.5 rounded-full">#${customer.id.replace('cust_', '')}</span>
+            </div>
+            <a href="tel:${customer.phone}" class="inline-flex items-center gap-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 px-2.5 py-0.5 rounded-lg text-xs font-bold mt-1.5">
+              <span>📞</span>
+              <span dir="ltr">${customer.phone}</span>
+              <span class="text-[10px] font-normal">(تماس مستقیم)</span>
+            </a>
+          </div>
+          <button onclick="confirmDeleteCustomer('${customer.id}')" class="p-1.5 text-slate-400 hover:text-red-600 rounded-lg">🗑️</button>
+        </div>
+        <div class="mt-2 text-xs text-slate-600 border-t border-slate-100 pt-2 space-y-0.5">
+          ${customer.address ? `<div><span class="text-slate-400">آدرس مغازه:</span> ${customer.address}</div>` : ''}
+          ${customer.deliveryLocation ? `<div><span class="text-slate-400">محل تحویل بار:</span> ${customer.deliveryLocation}</div>` : ''}
+        </div>
+      `;
+
+      statsCard.innerHTML = `
+        <div class="bg-indigo-50 border border-indigo-100 rounded-xl p-2">
+          <span class="text-[10px] text-indigo-700 block">کل کارتن</span>
+          <span class="text-sm font-extrabold text-indigo-900 block mt-0.5">${formatNumber(totalCartons)}</span>
+          <span class="text-[9px] text-indigo-500">عدد کارتن</span>
+        </div>
+        <div class="bg-emerald-50 border border-emerald-200 rounded-xl p-2">
+          <span class="text-[10px] text-emerald-700 block">تسویه (نقد)</span>
+          <span class="text-xs sm:text-sm font-extrabold text-emerald-900 block mt-0.5 truncate">${formatMoney(totalCash)}</span>
+          <span class="text-[9px] text-emerald-600">تومان</span>
+        </div>
+        <div class="bg-red-50 border border-red-200 rounded-xl p-2">
+          <span class="text-[10px] text-red-700 block">بدهی (نسیه)</span>
+          <span class="text-xs sm:text-sm font-extrabold text-red-900 block mt-0.5 truncate">${formatMoney(totalDebt)}</span>
+          <span class="text-[9px] text-red-600">تومان</span>
+        </div>
+      `;
+
+      renderTransactionsSection();
+    }
+
+    function renderTransactionsSection() {
+      const txnList = document.getElementById('transactionsList');
+      const badge = document.getElementById('transactionCountBadge');
+
+      if (appData.customers.length === 0) {
+        txnList.innerHTML = '<div class="text-center py-3 text-xs text-slate-400">مشتری وجود ندارد.</div>';
+        badge.textContent = '۰ مورد';
+        return;
+      }
+
+      const customer = appData.customers[currentCustomerIndex];
+      const txns = customer.transactions || [];
+      badge.textContent = `${formatNumber(txns.length)} مورد`;
+
+      if (txns.length === 0) {
+        txnList.innerHTML = '<div class="text-center py-4 text-xs text-slate-400">فاکتوری ثبت نشده است.</div>';
+        return;
+      }
+
+      const revTxns = [...txns].reverse();
+      txnList.innerHTML = revTxns.map(t => {
+        const isCash = t.type === 'cash';
+        const trackingCode = getInvoiceTrackingCode(t.id);
+        return `
+          <div class="rounded-xl p-3 border ${isCash ? 'bg-emerald-50/70 border-emerald-200' : 'bg-red-50/70 border-red-200'} text-xs">
+            <div class="flex items-start justify-between">
+              <div>
+                <div class="flex items-center gap-1.5">
+                  <span class="font-extrabold ${isCash ? 'text-emerald-800' : 'text-red-800'} text-sm">${formatNumber(t.cartons)} کارتن</span>
+                  <span class="text-slate-500 text-[11px]">(فی: ${formatMoney(t.unitPrice)} تومان)</span>
+                </div>
+                <div class="flex items-center gap-2 mt-1">
+                  <span class="text-slate-500 text-[11px]">تاریخ: ${t.date}</span>
+                  <!-- Tracking Code Badge -->
+                  <span class="inline-flex items-center gap-1 bg-white border border-slate-200 text-slate-700 px-1.5 py-0.5 rounded text-[10px] font-mono shadow-2xs" title="کد رهگیری و بارکد">
+                    <span>🏷️</span>
+                    <span>${trackingCode}</span>
+                  </span>
+                </div>
+              </div>
+              <div class="text-left">
+                <span class="font-black block text-sm ${isCash ? 'text-emerald-700' : 'text-red-700'}">${formatMoney(t.totalPrice)} تومان</span>
+                <span class="inline-block mt-0.5 px-2 py-0.5 text-[10px] font-bold rounded-full ${isCash ? 'bg-emerald-200 text-emerald-900' : 'bg-red-200 text-red-900'}">
+                  ${isCash ? '✓ نقد (تسویه)' : '✕ نسیه (بدهی)'}
+                </span>
+              </div>
+            </div>
+
+            ${t.notes ? `<div class="mt-2 bg-white/70 p-1.5 rounded text-[11px] text-slate-600"><span class="font-semibold">یادداشت:</span> ${t.notes}</div>` : ''}
+
+            <div class="mt-2.5 pt-2 border-t border-slate-200/80 flex items-center justify-between gap-1">
+              <div class="flex items-center gap-1.5">
+                <button onclick="printInvoiceForTransaction('${t.id}')" class="px-2.5 py-1 bg-white border border-slate-300 hover:bg-slate-50 rounded-lg text-slate-700 font-bold text-[11px] flex items-center gap-1 shadow-2xs">
+                  <span>🖨️</span>
+                  <span>چاپ فاکتور</span>
+                </button>
+                <button onclick="toggleTransactionStatus('${t.id}')" class="px-2 py-1 rounded-lg text-[11px] font-bold ${isCash ? 'bg-amber-100 text-amber-800' : 'bg-emerald-600 text-white'}">
+                  ${isCash ? 'تبدیل به نسیه' : '✓ ثبت تسویه'}
+                </button>
+              </div>
+              <button onclick="deleteTransaction('${t.id}')" class="text-red-500 hover:text-red-700 text-[11px]">حذف</button>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function handleDeliverySubmit(e) {
+      e.preventDefault();
+      const customer = appData.customers[currentCustomerIndex];
+      const cartons = parseFloat(document.getElementById('inputCartons').value);
+      const unitPrice = parseFloat(document.getElementById('inputUnitPrice').value);
+      const totalPrice = parseFloat(document.getElementById('inputTotalPrice').value) || (cartons * unitPrice);
+      const date = document.getElementById('inputDate').value || getTodayPersianDate();
+      const notes = document.getElementById('inputNotes').value.trim();
+      const paymentType = document.querySelector('input[name="paymentType"]:checked').value;
+
+      const newTxn = {
+        id: 'txn_' + Date.now(),
+        date, cartons, unitPrice, totalPrice, type: paymentType, notes
+      };
+
+      if (!customer.transactions) customer.transactions = [];
+      customer.transactions.push(newTxn);
+
+      saveData();
+      renderAll();
+
+      document.getElementById('inputCartons').value = '';
+      document.getElementById('inputTotalPrice').value = '';
+      document.getElementById('inputNotes').value = '';
+
+      if (confirm('فاکتور با موفقیت ثبت شد. آیا مایلید فاکتور رسمی همراه با بارکد و QR کد چاپ شود؟')) {
+        openInvoiceModalWithData(customer, newTxn);
+      }
+    }
+
+    function handlePrintFormDraft() {
+      const customer = appData.customers[currentCustomerIndex];
+      const cartons = parseFloat(document.getElementById('inputCartons').value) || 0;
+      const unitPrice = parseFloat(document.getElementById('inputUnitPrice').value) || 0;
+      const totalPrice = parseFloat(document.getElementById('inputTotalPrice').value) || (cartons * unitPrice);
+      const date = document.getElementById('inputDate').value || getTodayPersianDate();
+      const notes = document.getElementById('inputNotes').value.trim();
+      const paymentType = document.querySelector('input[name="paymentType"]:checked').value;
+
+      if (!cartons) {
+        alert('لطفاً تعداد کارتن را وارد نمایید.');
+        return;
+      }
+
+      const draftTxn = {
+        id: 'draft_' + Math.floor(Math.random() * 90000 + 10000),
+        date, cartons, unitPrice, totalPrice, type: paymentType, notes
+      };
+
+      openInvoiceModalWithData(customer, draftTxn);
+    }
+
+    function toggleTransactionStatus(id) {
+      const customer = appData.customers[currentCustomerIndex];
+      const t = (customer.transactions || []).find(x => x.id === id);
+      if (t) {
+        t.type = t.type === 'cash' ? 'credit' : 'cash';
+        saveData();
+        renderAll();
+      }
+    }
+
+    function deleteTransaction(id) {
+      if (!confirm('آیا از حذف این فاکتور مطمئن هستید؟')) return;
+      const customer = appData.customers[currentCustomerIndex];
+      customer.transactions = (customer.transactions || []).filter(x => x.id !== id);
+      saveData();
+      renderAll();
+    }
+
+    function printInvoiceForTransaction(id) {
+      const customer = appData.customers[currentCustomerIndex];
+      const t = (customer.transactions || []).find(x => x.id === id);
+      if (t) openInvoiceModalWithData(customer, t);
+    }
+
+    // Modal with B2B Printable Invoice including Barcode & QR Code
+    function openInvoiceModalWithData(customer, txn) {
+      const area = document.getElementById('printableInvoiceArea');
+      const isCash = txn.type === 'cash';
+      const settings = appData.settings || {};
+      const trackingCode = getInvoiceTrackingCode(txn.id);
+      const invoiceSerial = txn.id.replace('txn_', '').replace('draft_', '');
+
+      const customerDebt = (customer.transactions || []).filter(t => t.type === 'credit').reduce((s, t) => s + (Number(t.totalPrice) || 0), 0);
+      const showTracking = settings.enableTrackingCodes !== false;
+
+      const barcodeSVG = generateBarcodeSVG(trackingCode, 230, 44);
+      const qrPayload = `${settings.qrLink || 'karton.ir/track'}?inv=${trackingCode}&qty=${txn.cartons}&amt=${txn.totalPrice}&d=${txn.date}`;
+      const qrcodeSVG = generateQRCodeSVG(qrPayload, 100);
+
+      area.dataset.serial = invoiceSerial;
+      area.innerHTML = `
+        <div class="space-y-3.5">
+          <!-- Header -->
+          <div class="border-b-2 border-slate-900 pb-3 flex flex-col sm:flex-row items-center justify-between gap-3">
+            <div class="flex items-center gap-3">
+              <div class="w-12 h-12 bg-indigo-700 text-white rounded-xl flex items-center justify-center font-black text-xl overflow-hidden shrink-0 shadow-xs">
+                ${settings.logoImage ? `<img src="${settings.logoImage}" class="w-full h-full object-cover"/>` : `<span>${settings.logoText || 'ک'}</span>`}
+              </div>
+              <div>
+                <h1 class="text-base font-extrabold text-slate-950">${settings.shopName || 'پخش کارتن ایران'}</h1>
+                <p class="text-[11px] text-slate-600">${settings.slogan || 'توزیع کارتن ۳ و ۵ لایه'}</p>
+                <div class="text-[10px] text-slate-500 mt-0.5">تلفن: <span dir="ltr">${settings.phone || '021-55512345'}</span> | همراه: <span dir="ltr">${settings.mobile || '09121112233'}</span></div>
+              </div>
+            </div>
+
+            <div class="bg-slate-50 px-3 py-2 rounded-xl border border-slate-200 text-[11px] min-w-[200px] flex flex-col items-end">
+              <div class="w-full flex justify-between"><span class="text-slate-500">شماره سریال:</span><span class="font-extrabold font-mono">#${invoiceSerial}</span></div>
+              <div class="w-full flex justify-between"><span class="text-slate-500">تاریخ:</span><span class="font-bold">${txn.date}</span></div>
+              <div class="w-full flex justify-between"><span class="text-slate-500">کد مشتری:</span><span class="font-semibold">#${customer.id.replace('cust_', '')}</span></div>
+              ${showTracking ? `
+              <div class="w-full pt-1 border-t border-slate-200 text-center mt-1">
+                <div class="flex justify-center">${generateBarcodeSVG(trackingCode, 170, 30)}</div>
+                <span class="font-mono text-[9px] font-bold text-slate-600">${trackingCode}</span>
+              </div>` : ''}
+            </div>
+          </div>
+
+          <!-- Tracking Bar -->
+          ${showTracking ? `
+          <div class="bg-gradient-to-r from-indigo-50 via-slate-50 to-indigo-50 p-2 rounded-xl border border-indigo-200 flex items-center justify-between text-xs">
+            <div class="flex items-center gap-2">
+              <span class="p-1 bg-indigo-600 text-white rounded text-xs">🔖</span>
+              <div>
+                <span class="font-bold text-slate-800">کد رهگیری فاکتور:</span>
+                <span class="font-mono font-black text-indigo-700 mr-1">${trackingCode}</span>
+              </div>
+            </div>
+            <span class="bg-indigo-100 text-indigo-900 px-2 py-0.5 rounded text-[10px] font-bold">اصالت‌سنجی فاکتور معتبر</span>
+          </div>` : ''}
+
+          <!-- Customer details -->
+          <div class="grid grid-cols-2 gap-2 bg-slate-50 p-2.5 rounded-xl border border-slate-200 text-[11px]">
+            <div>
+              <span class="font-bold text-indigo-700 block mb-0.5">مشخصات خریدار (مشتری):</span>
+              <div class="font-bold text-slate-900">${customer.name}</div>
+              <div>تلفن: <span dir="ltr">${customer.phone}</span></div>
+              ${customer.address ? `<div>آدرس: ${customer.address}</div>` : ''}
+            </div>
+            <div class="border-r border-slate-200 pr-2">
+              <span class="font-bold text-slate-500 block mb-0.5">محل تخلیه و انبار:</span>
+              <div>${customer.deliveryLocation || 'تحویل در محل'}</div>
+              <div>نشانی مرکز توزیع: ${settings.address || 'تهران'}</div>
+            </div>
+          </div>
+
+          <!-- Items Table -->
+          <div class="border border-slate-300 rounded-xl overflow-hidden text-xs">
+            <table class="w-full text-right">
+              <thead class="bg-slate-100 border-b border-slate-300 text-[11px]">
+                <tr>
+                  <th class="p-2 text-center w-8">ردیف</th>
+                  <th class="p-2">شرح کالا</th>
+                  <th class="p-2 text-center">تعداد (کارتن)</th>
+                  <th class="p-2 text-left">فی (تومان)</th>
+                  <th class="p-2 text-left">جمع کل (تومان)</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-slate-200">
+                <tr>
+                  <td class="p-2 text-center">۱</td>
+                  <td class="p-2">
+                    <span class="font-bold">کارتن بسته‌بندی صادراتی</span>
+                    <span class="block text-[10px] text-slate-500">${txn.notes || 'کارتن بهداشتی مقاوم'}</span>
+                  </td>
+                  <td class="p-2 text-center font-black">${formatNumber(txn.cartons)}</td>
+                  <td class="p-2 text-left font-mono">${formatMoney(txn.unitPrice)}</td>
+                  <td class="p-2 text-left font-mono font-black text-indigo-900">${formatMoney(txn.totalPrice)}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <!-- Totals -->
+          <div class="grid grid-cols-2 gap-2 text-xs">
+            <div class="p-2 rounded-xl border ${isCash ? 'bg-emerald-50 border-emerald-300' : 'bg-red-50 border-red-300'} flex items-center justify-between">
+              <div>
+                <span class="text-[10px] font-bold ${isCash ? 'text-emerald-800' : 'text-red-800'}">وضعیت پرداخت:</span>
+                <span class="block font-black ${isCash ? 'text-emerald-900' : 'text-red-900'}">${isCash ? 'تسویه نقدی' : 'نسیه (بدهکاری دفتری)'}</span>
+              </div>
+              <span class="px-2 py-0.5 rounded text-[10px] font-black ${isCash ? 'bg-emerald-600 text-white' : 'bg-red-600 text-white'}">${isCash ? 'تسویه شده' : 'بدهکار'}</span>
+            </div>
+
+            <div class="bg-slate-100 p-2 rounded-xl border border-slate-300 space-y-1">
+              <div class="flex justify-between font-bold"><span>مبلغ فاکتور:</span><span class="font-mono">${formatMoney(txn.totalPrice)} تومان</span></div>
+              <div class="flex justify-between border-t border-slate-200 pt-1 text-[11px]"><span class="text-slate-500">مانده کل بدهی مشتری:</span><span class="font-bold text-red-700 font-mono">${formatMoney(customerDebt)} تومان</span></div>
+            </div>
+          </div>
+
+          <!-- NEW: Barcode & QR Code Verification Footer -->
+          ${showTracking ? `
+          <div class="border border-slate-200 rounded-xl p-2.5 bg-white flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
+            <div class="flex items-center gap-2.5">
+              <div class="w-16 h-16 shrink-0 border border-slate-200 rounded-lg p-0.5">${qrcodeSVG}</div>
+              <div>
+                <span class="font-bold text-slate-800 block text-[11px]">QR کد اصالت‌سنجی فاکتور</span>
+                <span class="text-[10px] text-slate-500 leading-tight block">اسکن با دوربین هوشمند برای تأیید اقلام و استعلام حساب</span>
+                <span class="font-mono text-[9px] text-slate-400 mt-0.5 block" dir="ltr">${settings.qrLink || 'karton.ir/track'}#${trackingCode}</span>
+              </div>
+            </div>
+            <div class="w-full sm:w-56 flex flex-col items-center p-1.5 rounded-lg bg-slate-50 border border-slate-200">
+              <span class="text-[9px] text-slate-500 mb-0.5">بارکد استاندارد تحویل انبار (Code-128)</span>
+              ${barcodeSVG}
+              <span class="font-mono text-[10px] font-black text-slate-800 tracking-wider">${trackingCode}</span>
+            </div>
+          </div>` : ''}
+
+          <!-- Signatures -->
+          <div class="grid grid-cols-2 gap-3 pt-2 text-center text-[11px]">
+            <div class="p-2 border border-dashed border-slate-300 rounded-xl h-16 flex flex-col justify-between">
+              <span class="text-slate-600 font-semibold">امضا و مهر تحویل‌دهنده (موزع)</span>
+              <span class="text-[9px] text-slate-400">تأیید سلامت کالا</span>
+            </div>
+            <div class="p-2 border border-dashed border-slate-300 rounded-xl h-16 flex flex-col justify-between">
+              <span class="text-slate-600 font-semibold">امضا و اثر انگشت تحویل‌گیرنده</span>
+              <span class="text-[9px] text-slate-400">اقلام فوق تحویل گرفته شد</span>
+            </div>
+          </div>
+        </div>
+      `;
+
+      document.getElementById('invoiceModal').classList.remove('hidden');
+    }
+
+    function closeInvoiceModal() {
+      document.getElementById('invoiceModal').classList.add('hidden');
+    }
+
+    function openHeaderSettingsModal() {
+      const s = appData.settings || {};
+      document.getElementById('settingShopName').value = s.shopName || '';
+      document.getElementById('settingSlogan').value = s.slogan || '';
+      document.getElementById('settingPhone').value = s.phone || '';
+      document.getElementById('settingMobile').value = s.mobile || '';
+      document.getElementById('settingAddress').value = s.address || '';
+      document.getElementById('settingEnableTrackingCodes').checked = (s.enableTrackingCodes !== false);
+      document.getElementById('settingTrackingPrefix').value = s.trackingPrefix || 'CRTN-1403';
+      document.getElementById('settingQrLink').value = s.qrLink || 'karton.ir/track';
+
+      document.getElementById('headerSettingsModal').classList.remove('hidden');
+    }
+
+    function closeHeaderSettingsModal() {
+      document.getElementById('headerSettingsModal').classList.add('hidden');
+    }
+
+    function saveHeaderSettings(e) {
+      e.preventDefault();
+      appData.settings.shopName = document.getElementById('settingShopName').value.trim();
+      appData.settings.slogan = document.getElementById('settingSlogan').value.trim();
+      appData.settings.phone = document.getElementById('settingPhone').value.trim();
+      appData.settings.mobile = document.getElementById('settingMobile').value.trim();
+      appData.settings.address = document.getElementById('settingAddress').value.trim();
+      appData.settings.enableTrackingCodes = document.getElementById('settingEnableTrackingCodes').checked;
+      appData.settings.trackingPrefix = document.getElementById('settingTrackingPrefix').value.trim() || 'CRTN-1403';
+      appData.settings.qrLink = document.getElementById('settingQrLink').value.trim() || 'karton.ir/track';
+
+      saveData();
+      closeHeaderSettingsModal();
+      renderAll();
+      alert('تنظیمات سربرگ و بارکد رهگیری ذخیره شد.');
+    }
+
+    function handleLogoUpload(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = function(evt) {
+        appData.settings.logoImage = evt.target.result;
+        document.getElementById('logoPreviewImg').src = evt.target.result;
+        document.getElementById('logoPreviewImg').classList.remove('hidden');
+        document.getElementById('logoPreviewDefault').classList.add('hidden');
+      };
+      reader.readAsDataURL(file);
+    }
+
+    function clearCustomLogo() {
+      appData.settings.logoImage = '';
+      document.getElementById('logoPreviewImg').classList.add('hidden');
+      document.getElementById('logoPreviewDefault').classList.remove('hidden');
+    }
+
+    function openAddCustomerModal() {
+      document.getElementById('addCustomerModal').classList.remove('hidden');
+      document.getElementById('custName').focus();
+    }
+
+    function closeAddCustomerModal() {
+      document.getElementById('addCustomerModal').classList.add('hidden');
+    }
+
+    function handleAddCustomerSubmit(e) {
+      e.preventDefault();
+      const name = document.getElementById('custName').value.trim();
+      const phone = document.getElementById('custPhone').value.trim();
+      const address = document.getElementById('custAddress').value.trim();
+      const deliveryLocation = document.getElementById('custDeliveryLocation').value.trim();
+
+      const newCust = {
+        id: 'cust_' + Date.now(),
+        name, phone, address, deliveryLocation,
+        transactions: []
+      };
+
+      appData.customers.push(newCust);
+      currentCustomerIndex = appData.customers.length - 1;
+      saveData();
+      closeAddCustomerModal();
+      renderAll();
+    }
+
+    function confirmDeleteCustomer(id) {
+      if (!confirm('آیا از حذف این مشتری و کلیه تراکنش‌ها اطمینان دارید؟')) return;
+      appData.customers = appData.customers.filter(c => c.id !== id);
+      currentCustomerIndex = Math.max(0, appData.customers.length - 1);
+      saveData();
+      renderAll();
+    }
+
+    function openBackupModal() {
+      document.getElementById('backupModal').classList.remove('hidden');
+    }
+
+    function closeBackupModal() {
+      document.getElementById('backupModal').classList.add('hidden');
+    }
+
+    // ---- File save/share helpers (native Android via Capacitor, browser fallback) ----
+    const CapRT = window.Capacitor;
+    const isNativeApp = !!(CapRT && CapRT.isNativePlatform && CapRT.isNativePlatform());
+
+    function utf8ToBase64(str) {
+      return btoa(unescape(encodeURIComponent(str)));
+    }
+
+    async function saveAndShareFile(fileName, base64Data, mime, title) {
+      if (isNativeApp) {
+        const { Filesystem, Share } = CapRT.Plugins;
+        const res = await Filesystem.writeFile({ path: fileName, data: base64Data, directory: 'CACHE' });
+        try {
+          await Share.share({ title: title, dialogTitle: title, files: [res.uri] });
+        } catch (err) {
+          // user closed the share sheet: not an error
+          if (!/cancel/i.test(String(err && (err.message || err)))) throw err;
+        }
+      } else {
+        const a = document.createElement('a');
+        a.href = 'data:' + mime + ';base64,' + base64Data;
+        a.download = fileName;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+      }
+    }
+
+    async function exportDataJSON() {
+      try {
+        const json = JSON.stringify(appData, null, 2);
+        await saveAndShareFile('carton_backup_' + Date.now() + '.json', utf8ToBase64(json), 'application/json', 'فایل پشتیبان');
+      } catch (err) {
+        alert('خطا در ذخیره فایل پشتیبان: ' + (err && err.message ? err.message : err));
+      }
+    }
+
+    async function saveInvoicePDF() {
+      const area = document.getElementById('printableInvoiceArea');
+      const btn = document.getElementById('btnSavePdf');
+      const label = document.getElementById('btnSavePdfLabel');
+      if (!area || !window.html2canvas || !window.jspdf) {
+        alert('کتابخانه ساخت PDF بارگذاری نشده است.');
+        return;
+      }
+      const oldText = label.textContent;
+      btn.disabled = true;
+      label.textContent = 'در حال ساخت PDF...';
+      try {
+        const canvas = await html2canvas(area, { scale: 2, backgroundColor: '#ffffff', useCORS: true, windowWidth: 800 });
+        const pdf = new window.jspdf.jsPDF({ orientation: 'p', unit: 'mm', format: 'a4' });
+        const pageW = 210, pageH = 297, margin = 8;
+        const imgW = pageW - margin * 2;
+        const imgH = canvas.height * imgW / canvas.width;
+        const img = canvas.toDataURL('image/jpeg', 0.92);
+        const usable = pageH - margin * 2;
+        let shown = 0;
+        pdf.addImage(img, 'JPEG', margin, margin, imgW, imgH);
+        shown += usable;
+        while (shown < imgH) {
+          pdf.addPage();
+          pdf.addImage(img, 'JPEG', margin, margin - shown, imgW, imgH);
+          shown += usable;
+        }
+        const dataUri = pdf.output('datauristring');
+        const base64 = dataUri.substring(dataUri.indexOf('base64,') + 7);
+        const name = 'invoice_' + (area.dataset.serial || Date.now()) + '.pdf';
+        await saveAndShareFile(name, base64, 'application/pdf', 'فاکتور');
+      } catch (err) {
+        alert('خطا در ساخت PDF: ' + (err && err.message ? err.message : err));
+      } finally {
+        btn.disabled = false;
+        label.textContent = oldText;
+      }
+    }
+
+    function importDataJSON(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = function(evt) {
+        try {
+          appData = JSON.parse(evt.target.result);
+          saveData();
+          renderAll();
+          alert('بازیابی اطلاعات با موفقیت انجام شد.');
+          closeBackupModal();
+        } catch (err) {
+          alert('خطا در خواندن فایل.');
+        }
+      };
+      reader.readAsText(file);
+    }
+
+    function confirmResetAllData() {
+      if (!confirm('آیا از پاکسازی کامل اطلاعات مطمئن هستید؟')) return;
+      localStorage.removeItem(STORAGE_KEY);
+      appData = JSON.parse(JSON.stringify(SEED_DATA));
+      renderAll();
+      closeBackupModal();
+    }
+
+    function setDatePresetFilter(p) {
+      txnDateFilterPreset = p;
+      renderTransactionsSection();
+    }
+
+    function handleCustomDateFilter() {
+      txnDateFrom = document.getElementById('filterFromDate').value.trim();
+      txnDateTo = document.getElementById('filterToDate').value.trim();
+      renderTransactionsSection();
+    }
+
+    function resetTxnDateFilter() {
+      txnDateFilterPreset = 'all';
+      document.getElementById('filterFromDate').value = '';
+      document.getElementById('filterToDate').value = '';
+      renderTransactionsSection();
+    }
+
+    window.onload = initApp;
+  </script>
+<!-- SCANNER EXTENSION LOGIC -->
+<script>
+  let isScannerFlashOn = false;
+
+  function openBarcodeScannerModal() {
+    const modal = document.getElementById('barcodeScannerModal');
+    if (modal) modal.classList.remove('hidden');
+    populateScannerSampleChips();
+    const input = document.getElementById('manualBarcodeField');
+    if (input) input.value = '';
+  }
+
+  function closeBarcodeScannerModal() {
+    const modal = document.getElementById('barcodeScannerModal');
+    if (modal) modal.classList.add('hidden');
+  }
+
+  function toggleScannerFlash() {
+    isScannerFlashOn = !isScannerFlashOn;
+    const icon = document.getElementById('scannerFlashIcon');
+    const text = document.getElementById('scannerFlashText');
+    const btn = document.getElementById('scannerFlashBtn');
+    if (isScannerFlashOn) {
+      icon.textContent = '💡';
+      text.textContent = 'فلاش روشن';
+      btn.classList.add('text-amber-400', 'border-amber-400/50');
+    } else {
+      icon.textContent = '⚡';
+      text.textContent = 'فلاش خاموش';
+      btn.classList.remove('text-amber-400', 'border-amber-400/50');
+    }
+  }
+
+  function populateScannerSampleChips() {
+    const container = document.getElementById('scannerSampleChipsContainer');
+    if (!container) return;
+    const samples = [];
+    (appData.customers || []).forEach(c => {
+      (c.transactions || []).forEach(t => {
+        samples.push({
+          code: getInvoiceTrackingCode(t.id),
+          custName: c.name,
+          amount: t.totalPrice
+        });
+      });
+    });
+
+    if (samples.length === 0) {
+      container.innerHTML = '<span class="text-[11px] text-slate-500">هیچ فاکتوری برای تست موجود نیست.</span>';
+      return;
+    }
+
+    container.innerHTML = samples.slice(0, 4).map(s => `
+      <button type="button" onclick="triggerScanDetection('${s.code}')" class="shrink-0 px-2.5 py-1 bg-slate-700/80 hover:bg-indigo-600 rounded-lg text-slate-200 hover:text-white font-mono text-[11px] font-bold border border-slate-600 transition flex items-center gap-1">
+        <span>🏷️</span>
+        <span>${s.code}</span>
+      </button>
+    `).join('');
+  }
+
+  function handleManualBarcodeSubmit(e) {
+    e.preventDefault();
+    const val = (document.getElementById('manualBarcodeField').value || '').trim();
+    if (val) triggerScanDetection(val);
+  }
+
+  function triggerScanDetection(scannedCode) {
+    closeBarcodeScannerModal();
+    const cleanInput = scannedCode.trim().toLowerCase();
+
+    let foundCustomerIndex = -1;
+    let foundTransaction = null;
+
+    (appData.customers || []).forEach((c, cIdx) => {
+      (c.transactions || []).forEach(t => {
+        const fullCode = getInvoiceTrackingCode(t.id).toLowerCase();
+        const cleanTxnId = (t.id || '').toLowerCase();
+        if (fullCode === cleanInput || fullCode.includes(cleanInput) || cleanInput.includes(fullCode) || cleanTxnId.includes(cleanInput)) {
+          foundCustomerIndex = cIdx;
+          foundTransaction = t;
+        }
+      });
+    });
+
+    if (foundCustomerIndex !== -1 && foundTransaction) {
+      selectCustomer(foundCustomerIndex);
+      showToastNotification(`✓ فاکتور ${getInvoiceTrackingCode(foundTransaction.id)} با موفقیت پیدا شد!`, 'success');
+
+      // Play simulated beep sound via Web Audio API
+      try {
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain); gain.connect(ctx.destination);
+        osc.frequency.value = 1760; osc.type = 'sine';
+        gain.gain.setValueAtTime(0.2, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.15);
+        osc.start(); osc.stop(ctx.currentTime + 0.15);
+      } catch (err) {}
+
+      // Scroll to transactions and highlight
+      setTimeout(() => {
+        const txnCard = document.getElementById('transactionsList');
+        if (txnCard) {
+          txnCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          const firstChild = txnCard.firstElementChild;
+          if (firstChild) {
+            firstChild.classList.add('highlight-scan-match');
+            setTimeout(() => firstChild.classList.remove('highlight-scan-match'), 4000);
+          }
+        }
+      }, 300);
+    } else {
+      showToastNotification(`کد رهگیری "${scannedCode}" در فاکتورها یافت نشد.`, 'error');
+    }
+  }
+
+  function showToastNotification(message, type = 'info') {
+    let toast = document.getElementById('appNotificationToast');
+    if (!toast) {
+      toast = document.createElement('div');
+      toast.id = 'appNotificationToast';
+      toast.className = 'fixed bottom-5 left-1/2 -translate-x-1/2 z-50 px-4 py-2.5 rounded-2xl shadow-2xl font-bold text-xs flex items-center gap-2 transition-all transform duration-300';
+      document.body.appendChild(toast);
+    }
+
+    if (type === 'success') {
+      toast.className = 'fixed bottom-5 left-1/2 -translate-x-1/2 z-50 px-4 py-2.5 rounded-2xl shadow-2xl font-bold text-xs flex items-center gap-2 transition-all transform duration-300 bg-emerald-600 text-white border border-emerald-400';
+    } else {
+      toast.className = 'fixed bottom-5 left-1/2 -translate-x-1/2 z-50 px-4 py-2.5 rounded-2xl shadow-2xl font-bold text-xs flex items-center gap-2 transition-all transform duration-300 bg-red-600 text-white border border-red-400';
+    }
+
+    toast.textContent = message;
+    toast.style.display = 'flex';
+    toast.style.opacity = '1';
+
+    setTimeout(() => {
+      toast.style.opacity = '0';
+      setTimeout(() => { toast.style.display = 'none'; }, 300);
+    }, 3500);
+  }
+</script><script>
+let analyticsScope = 'month';
+
+function setAnalyticsScope(scope) {
+  analyticsScope = scope;
+  const btnMonth = document.getElementById('btnAnalyticsScopeMonth');
+  const btnAll = document.getElementById('btnAnalyticsScopeAll');
+  if (btnMonth && btnAll) {
+    if (scope === 'month') {
+      btnMonth.className = 'px-2 py-0.5 rounded text-[10px] font-bold bg-indigo-600 text-white';
+      btnAll.className = 'px-2 py-0.5 rounded text-[10px] font-semibold text-slate-300 hover:text-white';
+    } else {
+      btnAll.className = 'px-2 py-0.5 rounded text-[10px] font-bold bg-indigo-600 text-white';
+      btnMonth.className = 'px-2 py-0.5 rounded text-[10px] font-semibold text-slate-300 hover:text-white';
+    }
+  }
+  renderAnalyticsDashboard();
+}
+
+function calculateTotalAmount() {
+  const cartons = parseFloat(document.getElementById('inputCartons')?.value) || 0;
+  const unitPrice = parseFloat(document.getElementById('inputUnitPrice')?.value) || 0;
+  const purchasePrice = parseFloat(document.getElementById('inputPurchasePrice')?.value) || 0;
+  const totalInput = document.getElementById('inputTotalPrice');
+  if (totalInput && cartons > 0 && unitPrice > 0) {
+    totalInput.value = cartons * unitPrice;
+  }
+  const profitPerCarton = Math.max(0, unitPrice - purchasePrice);
+  const totalProfit = cartons * profitPerCarton;
+  const margin = (unitPrice > 0 && purchasePrice > 0) ? Math.round((profitPerCarton / unitPrice) * 100) : 0;
+
+  const amountEl = document.getElementById('previewProfitAmount');
+  const badgeEl = document.getElementById('previewProfitMarginBadge');
+  if (amountEl) {
+    amountEl.textContent = `${formatMoney(totalProfit)} تومان`;
+  }
+  if (badgeEl) {
+    if (purchasePrice > 0) {
+      badgeEl.textContent = `سود فی: ${formatMoney(profitPerCarton)} ت (${margin}٪)`;
+    } else {
+      badgeEl.textContent = 'فی خرید تعیین نشده';
+    }
+  }
+}
+
+function renderAnalyticsDashboard() {
+  let totalCartons = 0;
+  let totalRevenue = 0;
+  let totalCost = 0;
+
+  (appData.customers || []).forEach(c => {
+    (c.transactions || []).forEach(t => {
+      const cQty = Number(t.cartons) || 0;
+      const cRev = Number(t.totalPrice) || 0;
+      const pPrice = Number(t.purchasePrice) || (Number(t.unitPrice) ? Math.round(Number(t.unitPrice) * 0.78) : 0);
+      const cCost = Number(t.totalCost) || (cQty * pPrice);
+
+      totalCartons += cQty;
+      totalRevenue += cRev;
+      totalCost += cCost;
+    });
+  });
+
+  const totalProfit = Math.max(0, totalRevenue - totalCost);
+  const marginPercent = totalRevenue > 0 ? Math.round((totalProfit / totalRevenue) * 100) : 0;
+
+  const cartonsEl = document.getElementById('dashTotalCartons');
+  const revEl = document.getElementById('dashTotalRevenue');
+  const costEl = document.getElementById('dashTotalCost');
+  const profitEl = document.getElementById('dashTotalProfit');
+  const marginEl = document.getElementById('dashProfitMarginBadge');
+
+  if (cartonsEl) cartonsEl.textContent = `${formatNumber(totalCartons)} عدد`;
+  if (revEl) revEl.textContent = formatMoney(totalRevenue);
+  if (costEl) costEl.textContent = formatMoney(totalCost);
+  if (profitEl) profitEl.textContent = `+${formatMoney(totalProfit)}`;
+  if (marginEl) marginEl.textContent = `${marginPercent}٪ حاشیه`;
+}
+
+const originalRenderAll = window.renderAll;
+window.renderAll = function() {
+  if (typeof originalRenderAll === 'function') originalRenderAll();
+  renderAnalyticsDashboard();
+};
+
+const originalRenderTransactionsSection = window.renderTransactionsSection;
+window.renderTransactionsSection = function() {
+  const txnList = document.getElementById('transactionsList');
+  const badge = document.getElementById('transactionCountBadge');
+  if (!txnList || appData.customers.length === 0) {
+    if (typeof originalRenderTransactionsSection === 'function') originalRenderTransactionsSection();
+    return;
+  }
+  const customer = appData.customers[currentCustomerIndex];
+  const txns = customer.transactions || [];
+  if (badge) badge.textContent = `${formatNumber(txns.length)} مورد`;
+  if (txns.length === 0) {
+    txnList.innerHTML = '<div class="text-center py-4 text-xs text-slate-400">فاکتوری ثبت نشده است.</div>';
+    return;
+  }
+  const revTxns = [...txns].reverse();
+  txnList.innerHTML = revTxns.map(t => {
+    const isCash = t.type === 'cash';
+    const trackingCode = getInvoiceTrackingCode(t.id);
+    const pPrice = Number(t.purchasePrice) || Math.round((Number(t.unitPrice) || 0) * 0.78);
+    const unitProfit = Math.max(0, (Number(t.unitPrice) || 0) - pPrice);
+    const totalProfit = Number(t.profit) || ((Number(t.cartons) || 0) * unitProfit);
+    return `
+      <div class="rounded-xl p-3 border ${isCash ? 'bg-emerald-50/70 border-emerald-200' : 'bg-red-50/70 border-red-200'} text-xs space-y-2">
+        <div class="flex items-start justify-between">
+          <div>
+            <div class="flex items-center gap-1.5 flex-wrap">
+              <span class="font-extrabold ${isCash ? 'text-emerald-800' : 'text-red-800'} text-sm">${formatNumber(t.cartons)} کارتن</span>
+              <span class="text-slate-500 text-[11px]">(فی فروش: ${formatMoney(t.unitPrice)} ت)</span>
+              <span class="text-[10px] bg-white border border-slate-200 text-slate-600 px-1.5 py-0.2 rounded font-mono">فی خرید: ${formatMoney(pPrice)}</span>
+            </div>
+            <div class="flex items-center gap-2 mt-1">
+              <span class="text-slate-500 text-[11px]">تاریخ: ${t.date}</span>
+              <span class="inline-flex items-center gap-1 bg-white border border-slate-200 text-slate-700 px-1.5 py-0.5 rounded text-[10px] font-mono shadow-2xs">
+                <span>🏷️</span>
+                <span>${trackingCode}</span>
+              </span>
+            </div>
+          </div>
+          <div class="text-left">
+            <span class="font-black block text-sm ${isCash ? 'text-emerald-700' : 'text-red-700'}">${formatMoney(t.totalPrice)} تومان</span>
+            <span class="inline-block mt-0.5 px-2 py-0.5 text-[10px] font-bold rounded-full ${isCash ? 'bg-emerald-200 text-emerald-900' : 'bg-red-200 text-red-900'}">
+              ${isCash ? '✓ نقد (تسویه)' : '✕ نسیه (بدهی)'}
+            </span>
+          </div>
+        </div>
+        <div class="bg-white/80 border border-slate-200/80 rounded-lg px-2 py-1 flex items-center justify-between text-[11px]">
+          <span class="text-slate-600">سود ناخالص این فاکتور:</span>
+          <div class="flex items-center gap-1.5">
+            <span class="font-black text-emerald-700 font-mono">+${formatMoney(totalProfit)} تومان</span>
+            <span class="bg-emerald-100 text-emerald-800 px-1.5 py-0.2 rounded text-[9px] font-bold">سود هر کارتن: ${formatMoney(unitProfit)} ت</span>
+          </div>
+        </div>
+        ${t.notes ? `<div class="bg-white/70 p-1.5 rounded text-[11px] text-slate-600"><span class="font-semibold">یادداشت:</span> ${t.notes}</div>` : ''}
+        <div class="pt-1.5 border-t border-slate-200/80 flex items-center justify-between gap-1">
+          <div class="flex items-center gap-1.5">
+            <button onclick="printInvoiceForTransaction('${t.id}')" class="px-2.5 py-1 bg-white border border-slate-300 hover:bg-slate-50 rounded-lg text-slate-700 font-bold text-[11px] flex items-center gap-1 shadow-2xs">
+              <span>🖨️</span>
+              <span>چاپ فاکتور</span>
+            </button>
+            <button onclick="toggleTransactionStatus('${t.id}')" class="px-2 py-1 rounded-lg text-[11px] font-bold ${isCash ? 'bg-amber-100 text-amber-800' : 'bg-emerald-600 text-white'}">
+              ${isCash ? 'تبدیل به نسیه' : '✓ ثبت تسویه'}
+            </button>
+          </div>
+          <button onclick="deleteTransaction('${t.id}')" class="text-red-500 hover:text-red-700 text-[11px]">حذف</button>
+        </div>
+      </div>
+    `;
+  }).join('');
+};
+
+window.handleDeliverySubmit = function(e) {
+  e.preventDefault();
+  const customer = appData.customers[currentCustomerIndex];
+  const cartons = parseFloat(document.getElementById('inputCartons').value) || 0;
+  const unitPrice = parseFloat(document.getElementById('inputUnitPrice').value) || 0;
+  const purchasePrice = parseFloat(document.getElementById('inputPurchasePrice').value) || (Math.round(unitPrice * 0.78));
+  const totalPrice = parseFloat(document.getElementById('inputTotalPrice').value) || (cartons * unitPrice);
+  const totalCost = cartons * purchasePrice;
+  const profit = Math.max(0, totalPrice - totalCost);
+  const date = document.getElementById('inputDate').value || getTodayPersianDate();
+  const notes = document.getElementById('inputNotes').value.trim();
+  const paymentType = document.querySelector('input[name="paymentType"]:checked').value;
+
+  const newTxn = {
+    id: 'txn_' + Date.now(),
+    date, cartons, unitPrice, purchasePrice, totalPrice, totalCost, profit,
+    type: paymentType, notes
+  };
+
+  if (!customer.transactions) customer.transactions = [];
+  customer.transactions.push(newTxn);
+  saveData();
+  renderAll();
+
+  document.getElementById('inputCartons').value = '';
+  document.getElementById('inputUnitPrice').value = '';
+  document.getElementById('inputPurchasePrice').value = '';
+  document.getElementById('inputTotalPrice').value = '';
+  document.getElementById('inputNotes').value = '';
+  calculateTotalAmount();
+
+  showToastNotification(`✓ تحویل ${formatNumber(cartons)} کارتن با سود +${formatMoney(profit)} تومان ثبت شد`, 'success');
+};
+
+setTimeout(() => {
+  calculateTotalAmount();
+  renderAnalyticsDashboard();
+}, 100);
+</script></body>
+</html>

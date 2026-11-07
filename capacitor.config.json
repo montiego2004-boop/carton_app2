@@ -1,0 +1,6 @@
+{
+  "appId": "com.yasin.cartondistribution",
+  "appName": "مدیریت توزیع کارتن",
+  "webDir": "www",
+  "android": { "allowMixedContent": false }
+}
